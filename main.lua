@@ -23,69 +23,12 @@ camera.x = -90
 camera.y = 0
 camera.speed = 120
 
--- Hurtbox
-myHurtBox = {}
--- Idle
-myHurtBox["idle"] = {}
-myHurtBox["idle"][1]  = {x=-18, y=13, w=25, h=51}
-myHurtBox["idle"][2]  = {x=-18, y=12, w=25, h=51}
-myHurtBox["idle"][3]  = {x=-18, y=12, w=25, h=51}
-myHurtBox["idle"][4]  = {x=-19, y=12, w=25, h=51}
-myHurtBox["idle"][5]  = {x=-19, y=10, w=25, h=52}
-myHurtBox["idle"][6]  = {x=-18, y=10, w=25, h=51}
-myHurtBox["idle"][7]  = {x=-18, y=10, w=25, h=52}
-myHurtBox["idle"][8]  = {x=-18, y=10, w=25, h=52}
-myHurtBox["idle"][9]  = {x=-18, y=11, w=25, h=51}
-myHurtBox["idle"][10] = {x=-18, y=11, w=25, h=51}
-myHurtBox["idle"][11] = {x=-18, y=12, w=25, h=50}
-myHurtBox["idle"][12] = {x=-18, y=12, w=25, h=50}
--- Run
-myHurtBox["run"] = {}
-myHurtBox["run"][1]  = {x=-22, y=12, w=29, h=50}
-myHurtBox["run"][2]  = {x=-27, y=13, w=24, h=48}
-myHurtBox["run"][3]  = {x=-28, y=19, w=23, h=42}
-myHurtBox["run"][4]  = {x=-24, y=16, w=28, h=45}
-myHurtBox["run"][5]  = {x=-27, y=10, w=24, h=52}
-myHurtBox["run"][6]  = {x=-27, y=11, w=24, h=50}
--- Jump
-myHurtBox["jump"] = {}
-myHurtBox["jump"][1]  = {x=-27, y=22, w=23, h=40}
-myHurtBox["jump"][2]  = {x=-28, y=16, w=22, h=45}
-myHurtBox["jump"][3]  = {x=-29, y=10, w=21, h=51}
-myHurtBox["jump"][4]  = {x=-32, y=1, w=19, h=60}
-myHurtBox["jump"][5]  = {x=-34, y=1, w=15, h=61}
-myHurtBox["jump"][6]  = {x=-34, y=1, w=18, h=61}
--- Fall
-myHurtBox["fall"] = {}
-myHurtBox["fall"][1]  = {x=-32, y=1, w=19, h=59}
--- Punch
-myHurtBox["punch"] = {}
-myHurtBox["punch"][1]  = {x=-24, y=12, w=26, h=49}
-myHurtBox["punch"][2]  = {x=-22, y=11, w=16, h=51}
-myHurtBox["punch"][3]  = {x=-19, y=12, w=15, h=50}
-myHurtBox["punch"][4]  = {x=-17, y=14, w=13, h=47}
-myHurtBox["punch"][5]  = {x=-29, y=11, w=12, h=50}
-myHurtBox["punch"][6]  = {x=-29, y=12, w=17, h=48}
-
--- HitBox
-myHitBox = {}
--- Punch
-myHitBox["punch"] = {}
-myHitBox["punch"][6]  = {x=-47, y=35, w=15, h=15}
-
-
--- EnemyBoxes
--- Hurtbox
-enemyHurtBox = {}
--- Idle
-enemyHurtBox["idle"] 	= {}
-enemyHurtBox["idle"][1] = {x=-17, y=12, w=30, h=50}
-enemyHurtBox["idle"][2] = {x=-17, y=12, w=31, h=50}
-
 -- Lists
 listSprites = {}
 listFighters = {}
 listEnemies = {}
+listHurtBoxes = {}
+listHitBoxes  = {}
 
 -- Factory function for creating sprites
 function CreateSprite(pName, pX, pY, pVX, pVY, pState, pFrame, pImage)
@@ -101,6 +44,7 @@ function CreateSprite(pName, pX, pY, pVX, pVY, pState, pFrame, pImage)
 	mySprite.isFalling = false
 	mySprite.isStanding = false
 	mySprite.jumpSpeed = 200
+	mySprite.isDead = false
 
 	mySprite.currentAnimation = ""
 	mySprite.frame = 0
@@ -108,6 +52,8 @@ function CreateSprite(pName, pX, pY, pVX, pVY, pState, pFrame, pImage)
 	mySprite.animationTimer = 0
 	mySprite.animations = {}
 	mySprite.images = {}
+	mySprite.hurtBox = {}
+	mySprite.hitBox = {}
 
 	-- Function used for add images as a tilesheet for a sprite
 	mySprite.AddImages = function(pDirectory, pSpriteName, pListImages)
@@ -175,11 +121,17 @@ function ChangeAnimationSpeed(pSprite, pAnimationSpeed)
 	end
 end
 
+function SpriteDead(pSprite)
+	if pSprite.isDead == false then
+		pSprite.isDead = true
+	end
+end
+
 -- Collision detection function
 -- Returns true if two boxes overlap, false if they don't
 -- x1,y1 are the top-left coords of the first box, while w1,h1 are its width and height
 -- x2,y2,w2 & h2 are the same, but for the second box.
-function CheckCollision(x1,y1,w1,h1, x2,y2,w2,h2)
+function CheckCollision(x1,y1,w1,h1,x2,y2,w2,h2)
   return x1 < x2+w2 and
          x2 < x1+w1 and
          y1 < y2+h2 and
@@ -188,28 +140,29 @@ end
 
 function CreateBox(pList, pBox, pWho, pSprite)
 	local myBox = {}
-	myBox.x = pSprite.x + pBox.x + camera.x
-	myBox.y = pSprite.y + pBox.y + camera.y
-	myBox.w = pBox.w
-	myBox.h = pBox.h 
+	myBox.x = pSprite.x + pBox.x --+ camera.x
+	myBox.y = pSprite.y + pBox.y --+ camera.y
+	myBox.w = pBox.w * 2
+	myBox.h = pBox.h * 2
 	myBox.who = pWho
 	table.insert(pList, myBox)
+	--print("Ma box créée | X:"..tostring(myBox.x).."; Y :"..tostring(myBox.y).."; W :"..tostring(myBox.w).."; W :"..tostring(myBox.w))
 	return myBox
 end
 
 function SetBoxes(pSprite)
-	listHurtBoxes = {}
-	listHitBoxes  = {}
-	if myHurtBox[pSprite.state] ~= nil then
-		local myBox = myHurtBox[pSprite.state][pSprite.frame]
+	if pSprite.hurtBox[pSprite.state] ~= nil then
+		local myBox = pSprite.hurtBox[pSprite.state][pSprite.frame]
 		if myBox ~= nil then
-			CreateBox(listHurtBoxes, myBox, "Rayman", pSprite)
+			CreateBox(listHurtBoxes, myBox, pSprite.name, pSprite)
+			--print("Mon Sprite | X:"..tostring(pSprite.x).."; Y :"..tostring(pSprite.y)..";")
+			--print("Ma box | X:"..tostring(myBox.x).."; Y :"..tostring(myBox.y).."; W :"..tostring(myBox.w).."; W :"..tostring(myBox.w))
 		end
 	end
-	if myHitBox[pSprite.state] ~= nil then
-		local myBox = myHitBox[pSprite.state][pSprite.frame]
+	if pSprite.hitBox[pSprite.state] ~= nil then
+		local myBox = pSprite.hitBox[pSprite.state][pSprite.frame]
 		if myBox ~= nil then
-			CreateBox(listHitBoxes, myBox, "Rayman", pSprite)
+			CreateBox(listHitBoxes, myBox, pSprite.name, pSprite)
 		end
 	end
 end
@@ -219,11 +172,14 @@ function TestCollisions()
 		local hitb = listHitBoxes[hit]
 		for hurt=1, #listHurtBoxes do
 			local hurtb = listHurtBoxes[hurt]
+			--print("Collision ? "..tostring(CheckCollision(hitb.x, hitb.y, hitb.w, hitb.h,
+			--				  hurtb.x, hurtb.y, hurtb.w, hurtb.h)))
 			if CheckCollision(hitb.x, hitb.y, hitb.w, hitb.h,
 							  hurtb.x, hurtb.y, hurtb.w, hurtb.h) == true then
 				if hitb.who ~= hurtb.who then
 					print(hitb.who.." vient de frapper "..hurtb.who)
 					lastActionBy = hitb.who
+					bTestCollision = false
 				end			  	
 		  	end
 		end
@@ -231,10 +187,11 @@ function TestCollisions()
 end
 
 function love.load()
-	love.window.setTitle("Gamecodeur Beat'Em All")
+	love.window.setTitle("Gamecodeur Beat'Em Up")
 
 	-- Creating my first fighter and import those animations
 	myFighter = CreateFighter("Rayman", 160, MAPDOWN, 90, 0, "idle", 1, "rayman", 32, 64)
+	--Animations
 	myFighter.AddAnimation("images/", "rayman", "idle", {"idle1", "idle2", "idle3", "idle4", "idle5",
 														 "idle6", "idle7", "idle8", "idle9", "idle10",
 														 "idle11", "idle12"})
@@ -243,18 +200,71 @@ function love.load()
 	myFighter.AddAnimation("images/", "rayman", "fall", {"fall1"})
 	myFighter.AddAnimation("images/", "rayman", "punch", {"punch1", "punch2", "punch3", "punch4", "punch5", "punch6"})
 	myFighter.PlayAnimation("idle")
-	
+	--HurtBoxes
+	-- Idle
+	myFighter.hurtBox["idle"] = {}
+	myFighter.hurtBox["idle"][1]  = {x=10, y=0, w=25, h=51}
+	myFighter.hurtBox["idle"][2]  = {x=10, y=0, w=25, h=51}
+	myFighter.hurtBox["idle"][3]  = {x=10, y=0, w=25, h=51}
+	myFighter.hurtBox["idle"][4]  = {x=10, y=0, w=25, h=51}
+	myFighter.hurtBox["idle"][5]  = {x=10, y=0, w=25, h=52}
+	myFighter.hurtBox["idle"][6]  = {x=10, y=0, w=25, h=51}
+	myFighter.hurtBox["idle"][7]  = {x=10, y=0, w=25, h=52}
+	myFighter.hurtBox["idle"][8]  = {x=10, y=0, w=25, h=52}
+	myFighter.hurtBox["idle"][9]  = {x=10, y=0, w=25, h=51}
+	myFighter.hurtBox["idle"][10] = {x=10, y=0, w=25, h=51}
+	myFighter.hurtBox["idle"][11] = {x=10, y=0, w=25, h=50}
+	myFighter.hurtBox["idle"][12] = {x=10, y=0, w=25, h=50}
+	-- Run
+	myFighter.hurtBox["run"] = {}
+	myFighter.hurtBox["run"][1]  = {x=22, y=12, w=29, h=50}
+	myFighter.hurtBox["run"][2]  = {x=27, y=13, w=24, h=48}
+	myFighter.hurtBox["run"][3]  = {x=28, y=19, w=23, h=42}
+	myFighter.hurtBox["run"][4]  = {x=24, y=16, w=28, h=45}
+	myFighter.hurtBox["run"][5]  = {x=27, y=10, w=24, h=52}
+	myFighter.hurtBox["run"][6]  = {x=27, y=11, w=24, h=50}
+	-- Jump
+	myFighter.hurtBox["jump"] = {}
+	myFighter.hurtBox["jump"][1]  = {x=27, y=22, w=23, h=40}
+	myFighter.hurtBox["jump"][2]  = {x=28, y=16, w=22, h=45}
+	myFighter.hurtBox["jump"][3]  = {x=29, y=10, w=21, h=51}
+	myFighter.hurtBox["jump"][4]  = {x=32, y=1, w=19, h=60}
+	myFighter.hurtBox["jump"][5]  = {x=34, y=1, w=15, h=61}
+	myFighter.hurtBox["jump"][6]  = {x=34, y=1, w=18, h=61}
+	-- Fall
+	myFighter.hurtBox["fall"] = {}
+	myFighter.hurtBox["fall"][1]  = {x=32, y=1, w=19, h=59}
+	-- Punch
+	myFighter.hurtBox["punch"] = {}
+	myFighter.hurtBox["punch"][1]  = {x=24, y=12, w=26, h=49}
+	myFighter.hurtBox["punch"][2]  = {x=22, y=11, w=16, h=51}
+	myFighter.hurtBox["punch"][3]  = {x=19, y=12, w=15, h=50}
+	myFighter.hurtBox["punch"][4]  = {x=17, y=14, w=13, h=47}
+	myFighter.hurtBox["punch"][5]  = {x=29, y=11, w=12, h=50}
+	myFighter.hurtBox["punch"][6]  = {x=29, y=12, w=17, h=48}
+
+	--HitBoxes
+	-- Punch
+	myFighter.hitBox["punch"] = {}
+	myFighter.hitBox["punch"][1]  = {x=47, y=35, w=15, h=15}
+
+
 	-- Creating my first enemy and those animations
-	myEnemy = CreateEnemy("Rabbids", 700, MAPDOWN, 90, 0, "idle", "rabbids", 32, 64)
+	myEnemy = CreateEnemy("Rabbids", screenWidth/2, MAPDOWN, 90, 0, "idle", "rabbids", 32, 64)
 	myEnemy.AddAnimation("images/", "rabbids", "idle", {"idle1", "idle2"})
 	ChangeAnimationSpeed(myEnemy, 1/4)
 	myEnemy.PlayAnimation("idle")
+	-- Hurtbox
+	myEnemy.hurtBox = {}
+	-- Idle
+	myEnemy.hurtBox["idle"] 	= {}
+	myEnemy.hurtBox["idle"][1] = {x=0, y=0, w=30, h=50}
+	myEnemy.hurtBox["idle"][2] = {x=0, y=0, w=31, h=50}
 end
 
 -- Update camera moves wich follow fighter selected by player
 function MoveCamera(pCamera, pSprite)
 	local dist = pCamera.x + pSprite.x
-	print("Dist = "..tostring(dist))
 	if dist < 70 then
 		pCamera.x = pCamera.x + 1
 	end
@@ -278,7 +288,7 @@ function UpdateSprite(pSprite, dt)
 		end
 		-- Check if it's the last frame for punching
 		if pSprite.isPunching == true then
-			if pSprite.frame == pSprite.animations[6] then
+			if pSprite.frame == 6 then
 				bHitBoxActive = true
 			end
 		end
@@ -290,8 +300,8 @@ function UpdateSprite(pSprite, dt)
 				pSprite.frame = 1
 				-- Specifig values for jumping and punching animations
 				if pSprite.isPunching == true then
-					ChangeAnimation(pSprite, "idle")
 					pSprite.isPunching = false
+					ChangeAnimation(pSprite, "idle")
 					bHitBoxActive = false
 				end
 				if pSprite.isJumping == true then
@@ -342,6 +352,8 @@ function UpdateSprite(pSprite, dt)
 	if bTestCollision then
 		TestCollisions()
 	end
+
+	--print("bTestCollision = "..tostring(bTestCollision))
 end
 
 function UpdateFighter(pFighter, pCamera, dt)
@@ -408,51 +420,10 @@ function UpdateFighter(pFighter, pCamera, dt)
 	pFighter.PlayAnimation(newAnimation)
 end
 
-function UpdateEnemies(pEnemy, pFighter, dt)
-	-- ADD : if pFighter.isDead == false
-	-- Enemies moves
-	local targetX = pFighter.x
-	if pEnemy.state == "Walk" then
-		if pEnemy.x > targetX then
-			pEnemy.flip = false
-			pEnemy.x = pEnemy.x - pEnemy.vx
-		elseif pEnemy.x < targetX then
-			pEnemy.flip = true
-			pEnemy.x = pEnemy.x + pEnemy.vx
-		end
-	end
-
-	--Enemies attack
-	if pEnemy.x > (targetX - 40) and pEnemy.x < (targetX + 40) then
-	    pEnemy.state = "Attack"
-	else
-		pEnemy.state = "Walk"
-	end
-
-	--Enemies states
-	if pEnemy.state == "Attack" then
-		pEnemy.timerAttack = pEnemy.timerAttack - 1
-		pEnemy.image = love.graphics.newImage("images/zombieAttack1.png")
-		--[[local timerBite = 30
-		if pEnemy.timerAttack <= 0 then
-			timerBite = timerBite - 1
-			if timerBite <= 0 then
-				pEnemy.image = love.graphics.newImage("images/zombieAttack2.png")
-				 
-			end
-			timerBite = 30
-		end]]
-		pEnemy.timerAttack = 60
-	else
-		pEnemy.image = love.graphics.newImage("images/zombieWalk1.png")
-	end
-end
-
 function love.update(dt)
 	UpdateSprite(myFighter, dt)
 	UpdateSprite(myEnemy, dt)
 	UpdateFighter(myFighter, camera, dt)
-	--UpdateEnemies(myEnemy, myFighter, dt)
 end
 
 -- Drawing sprites and those animations
@@ -474,11 +445,28 @@ function DrawSprite(pSprite)
 
 end
 
+function DrawBoxes()
+	love.graphics.setColor(0,0,1)
+	for hurt=1, #listHurtBoxes do
+		local hurtb = listHurtBoxes[hurt]
+		love.graphics.rectangle("line", hurtb.x, hurtb.y, hurtb.w, hurtb.h)
+	end
+	if bHitBoxActive == true then
+		love.graphics.setColor(1,0,0)
+		for hit=1, #listHitBoxes do
+			local hitb = listHitBoxes[hit]
+			love.graphics.rectangle("line", hitb.x, hitb.y, hitb.w, hitb.h)
+		end
+	end
+	love.graphics.setColor(1,1,1)
+end
+
 function love.draw()
 	--Map
 	love.graphics.draw(map, mapOriginX + camera.x, mapOriginY)
 	DrawSprite(myFighter)
 	DrawSprite(myEnemy)
+	DrawBoxes()
 end
 
 function KeyPressedFighter(key, pFighter)
@@ -488,9 +476,8 @@ function KeyPressedFighter(key, pFighter)
 			pFighter.isJumping = true
 		end
 	elseif key == "space" then
-		--oldAnimationSpeed = pFighter.animationSpeed
 		pFighter.isPunching = true
-		bTestCollision = ChangeAnimation(pFighter, pFighter.frame)
+		bTestCollision = ChangeAnimation(pFighter, "punch")
 	end
 end
 
